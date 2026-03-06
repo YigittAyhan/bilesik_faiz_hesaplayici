@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bileşik Faiz Hesaplayıcı</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .form-container {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="number"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #clearBtn {
+            background-color: #f44336;
+        }
+        #clearBtn:hover {
+            background-color: #d32f2f;
+        }
+        #downloadBtn {
+            background-color: #2196F3;
+        }
+        #downloadBtn:hover {
+            background-color: #1976D2;
+        }
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #e9f7ef;
+            border-radius: 8px;
+            display: none;
+        }
+        .results h2 {
+            margin-top: 0;
+            color: #2e7d32;
+        }
+        .result-item {
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .result-label {
+            font-weight: bold;
+        }
+        .chart-container {
+            margin-top: 30px;
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #ddd;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        .tab.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .table-container {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: right;
+        }
+        th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        .error-message {
+            color: #f44336;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+        /* Koyu Mod */
+        body.dark-mode {
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .dark-mode .form-container,
+        .dark-mode .results,
+        .dark-mode th {
+            background-color: #2d2d2d;
+        }
+        .dark-mode .tab {
+            background-color: #444;
+            color: #fff;
+        }
+        .dark-mode .tab.active {
+            background-color: #4CAF50;
+        }
+        /* Mobil Optimizasyon */
+        @media (max-width: 600px) {
+            .form-group {
+                margin-bottom: 20px;
+            }
+            .buttons {
+                flex-direction: column;
+            }
+            button {
+                width: 100%;
+            }
+            .tabs {
+                flex-direction: column;
+            }
+            .tab {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div style="text-align: right; margin-bottom: 20px;">
+        <button id="themeToggle">Koyu Mod</button>
+    </div>
+    
+    <h1>Bileşik Faiz Hesaplayıcı</h1>
+    
+    <div class="form-container">
+        <div class="form-group">
+            <label for="initialAmount">Yatırılan Tutar (Başlangıç):</label>
+            <input type="number" id="initialAmount" min="0" step="1000" value="10000">
+            <div class="error-message" id="initialAmountError">Lütfen geçerli bir tutar girin.</div>
+        </div>
+        
+        <div class="form-group">
+            <label for="annualContribution">Yıllık Katkı:</label>
+            <input type="number" id="annualContribution" min="0" step="1000" value="12000">
+            <div class="error-message" id="annualContributionError">Lütfen geçerli bir tutar girin.</div>
+        </div>
+        
+        <div class="form-group">
+            <label for="annualContributionIncrease">Yıllık Katkı Artış Oranı (%):</label>
+            <input type="number" id="annualContributionIncrease" min="0" max="100" step="1" value="5">
+            <div class="error-message" id="annualContributionIncreaseError">0-100 arası bir oran girin.</div>
+        </div>
+        
+        <div class="form-group">
+            <label for="monthlyContribution">Aylık Katkı:</label>
+            <input type="number" id="monthlyContribution" min="0" step="100" value="1000">
+            <div class="error-message" id="monthlyContributionError">Lütfen geçerli bir tutar girin.</div>
+        </div>
+        
+        <div class="form-group">
+            <label for="monthlyContributionIncrease">Aylık Katkı Artış Oranı (%):</label>
+            <input type="number" id="monthlyContributionIncrease" min="0" max="100" step="1" value="2">
+            <div class="error-message" id="monthlyContributionIncreaseError">0-100 arası bir oran girin.</div>
+        </div>
+        
+        <div class="form-group">
+            <label for="interestRate">Faiz Oranı (%):</label>
+            <input type="number" id="interestRate" min="0" max="100" step="0.1" value="10">
+            <div class="error-message" id="interestRateError">0-100 arası bir oran girin.</div>
+        </div>
+        
+        <div class="form-group">
+            <label for="compoundingFrequency">Bileşiklendirme Sıklığı:</label>
+            <select id="compoundingFrequency">
+                <option value="12">Aylık</option>
+                <option value="1">Yıllık</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="years">Yıl Sayısı:</label>
+            <input type="number" id="years" min="1" max="100" step="1" value="10">
+            <div class="error-message" id="yearsError">1-100 arası bir sayı girin.</div>
+        </div>
+        
+        <div class="form-group">
+            <label for="taxRate">Vergi Oranı (%):</label>
+            <input type="number" id="taxRate" min="0" max="100" step="0.1" value="15">
+            <div class="error-message" id="taxRateError">0-100 arası bir oran girin.</div>
+        </div>
+        
+        <div class="buttons">
+            <button id="calculateBtn">Hesapla</button>
+            <button id="clearBtn">Temizle</button>
+            <button id="downloadBtn">PDF İndir</button>
+        </div>
+    </div>
+    
+    <div id="results" class="results">
+        <h2>Hesaplama Sonuçları</h2>
+        <div class="result-item">
+            <span class="result-label">Toplam Yatırılan Tutar:</span>
+            <span id="totalInvested"></span>
+        </div>
+        <div class="result-item">
+            <span class="result-label">Faiz Getirisi:</span>
+            <span id="interestEarned"></span>
+        </div>
+        <div class="result-item">
+            <span class="result-label">Vergi Öncesi Toplam:</span>
+            <span id="totalBeforeTax"></span>
+        </div>
+        <div class="result-item">
+            <span class="result-label">Ödenecek Vergi:</span>
+            <span id="taxAmount"></span>
+        </div>
+        <div class="result-item">
+            <span class="result-label">Net Toplam:</span>
+            <span id="netTotal"></span>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="growth">Büyüme Grafiği</div>
+            <div class="tab" data-tab="contributions">Katkı Dağılımı</div>
+            <div class="tab" data-tab="yearly">Yıllık Sonuçlar</div>
+            <div class="tab" data-tab="table">Yıllık Tablo</div>
+        </div>
+        
+        <div class="tab-content active" id="growth-tab">
+            <div class="chart-container">
+                <canvas id="growthChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="contributions-tab">
+            <div class="chart-container">
+                <canvas id="contributionsChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="yearly-tab">
+            <div class="chart-container">
+                <canvas id="yearlyChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="table-tab">
+            <div class="table-container">
+                <table id="yearlyTable">
+                    <thead>
+                        <tr>
+                            <th>Yıl</th>
+                            <th>Toplam Yatırım</th>
+                            <th>Faiz Getirisi</th>
+                            <th>Net Toplam</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { jsPDF } = window.jspdf;
+        let growthChart, contributionsChart, yearlyChart;
+        let yearlyData = [];
+        
+        document.getElementById('calculateBtn').addEventListener('click', calculate);
+        document.getElementById('clearBtn').addEventListener('click', clearForm);
+        document.getElementById('downloadBtn').addEventListener('click', downloadPDF);
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
+            });
+        });
+        
+        function validateInputs() {
+            let isValid = true;
+            const inputs = [
+                { id: 'initialAmount', errorId: 'initialAmountError', min: 0 },
+                { id: 'annualContribution', errorId: 'annualContributionError', min: 0 },
+                { id: 'monthlyContribution', errorId: 'monthlyContributionError', min: 0 },
+                { id: 'annualContributionIncrease', errorId: 'annualContributionIncreaseError', min: 0, max: 100 },
+                { id: 'monthlyContributionIncrease', errorId: 'monthlyContributionIncreaseError', min: 0, max: 100 },
+                { id: 'interestRate', errorId: 'interestRateError', min: 0, max: 100 },
+                { id: 'years', errorId: 'yearsError', min: 1, max: 100 },
+                { id: 'taxRate', errorId: 'taxRateError', min: 0, max: 100 }
+            ];
+            
+            inputs.forEach(input => {
+                const value = parseFloat(document.getElementById(input.id).value);
+                const errorElement = document.getElementById(input.errorId);
+                if (isNaN(value) || value < input.min || (input.max && value > input.max)) {
+                    errorElement.style.display = 'block';
+                    isValid = false;
+                } else {
+                    errorElement.style.display = 'none';
+                }
+            });
+            return isValid;
+        }
+        
+        function calculate() {
+            if (!validateInputs()) return;
+            
+            const initialAmount = parseFloat(document.getElementById('initialAmount').value) || 0;
+            const annualContribution = parseFloat(document.getElementById('annualContribution').value) || 0;
+            const annualContributionIncrease = parseFloat(document.getElementById('annualContributionIncrease').value) / 100 || 0;
+            const monthlyContribution = parseFloat(document.getElementById('monthlyContribution').value) || 0;
+            const monthlyContributionIncrease = parseFloat(document.getElementById('monthlyContributionIncrease').value) / 100 || 0;
+            const interestRate = parseFloat(document.getElementById('interestRate').value) / 100 || 0;
+            const compoundingFrequency = parseInt(document.getElementById('compoundingFrequency').value) || 12;
+            const years = parseInt(document.getElementById('years').value) || 1;
+            const taxRate = parseFloat(document.getElementById('taxRate').value) / 100 || 0;
+            
+            let total = initialAmount;
+            let totalInvested = initialAmount;
+            const periods = years * compoundingFrequency;
+            const periodicRate = interestRate / compoundingFrequency;
+            
+            let currentMonthlyContribution = monthlyContribution;
+            let currentAnnualContribution = annualContribution;
+            
+            const labels = [];
+            const growthData = [];
+            const contributionData = [];
+            yearlyData = [];
+            
+            let yearlyInvested = initialAmount;
+            let yearlyInterest = 0;
+            let yearCounter = 1;
+            
+            for (let i = 1; i <= periods; i++) {
+                if (compoundingFrequency === 12) {
+                    total += currentMonthlyContribution;
+                    totalInvested += currentMonthlyContribution;
+                    yearlyInvested += currentMonthlyContribution;
+                    if (i % 12 === 0 && monthlyContributionIncrease > 0) {
+                        currentMonthlyContribution *= (1 + monthlyContributionIncrease);
+                    }
+                }
+                
+                const interest = total * periodicRate;
+                total *= (1 + periodicRate);
+                yearlyInterest += interest;
+                
+                if ((compoundingFrequency === 1 && i % 1 === 0) || 
+                    (compoundingFrequency === 12 && i % 12 === 0)) {
+                    total += currentAnnualContribution;
+                    totalInvested += currentAnnualContribution;
+                    yearlyInvested += currentAnnualContribution;
+                    if (annualContributionIncrease > 0) {
+                        currentAnnualContribution *= (1 + annualContributionIncrease);
+                    }
+                }
+                
+                if (compoundingFrequency === 12) {
+                    if (i % (periods / 10) === 0 || i === periods) {
+                        labels.push(`${Math.round(i/12)}. Yıl`);
+                        growthData.push(total);
+                        contributionData.push(totalInvested);
+                    }
+                } else {
+                    labels.push(`${i}. Yıl`);
+                    growthData.push(total);
+                    contributionData.push(totalInvested);
+                }
+                
+                if (i % (compoundingFrequency === 12 ? 12 : 1) === 0) {
+                    yearlyData.push({
+                        year: yearCounter,
+                        total: total,
+                        invested: yearlyInvested,
+                        interest: yearlyInterest,
+                        net: total - (yearlyInterest * taxRate)
+                    });
+                    yearlyInvested = 0;
+                    yearlyInterest = 0;
+                    yearCounter++;
+                }
+            }
+            
+            const interestEarned = total - totalInvested;
+            const taxAmount = interestEarned * taxRate;
+            const netTotal = total - taxAmount;
+            
+            document.getElementById('totalInvested').textContent = formatCurrency(totalInvested);
+            document.getElementById('interestEarned').textContent = formatCurrency(interestEarned);
+            document.getElementById('totalBeforeTax').textContent = formatCurrency(total);
+            document.getElementById('taxAmount').textContent = formatCurrency(taxAmount);
+            document.getElementById('netTotal').textContent = formatCurrency(netTotal);
+            
+            createCharts(labels, growthData, contributionData);
+            createYearlyTable();
+            
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function createCharts(labels, growthData, contributionData) {
+            if (growthChart) growthChart.destroy();
+            if (contributionsChart) contributionsChart.destroy();
+            if (yearlyChart) yearlyChart.destroy();
+            
+            const growthCtx = document.getElementById('growthChart').getContext('2d');
+            growthChart = new Chart(growthCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Toplam Değer',
+                            data: growthData,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderWidth: 2,
+                            fill: true
+                        },
+                        {
+                            label: 'Toplam Yatırım',
+                            data: contributionData,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderWidth: 2,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: value => formatCurrencyCompact(value) }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: context => `${context.dataset.label}: ${formatCurrency(context.raw)}`
+                            }
+                        }
+                    }
+                }
+            });
+            
+            const contributionsCtx = document.getElementById('contributionsChart').getContext('2d');
+            contributionsChart = new Chart(contributionsCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Toplam Yatırım', 'Faiz Getirisi'],
+                    datasets: [{
+                        data: [contributionData[contributionData.length-1], growthData[growthData.length-1] - contributionData[contributionData.length-1]],
+                        backgroundColor: ['rgba(54, 162, 235, 0.7)', 'rgba(75, 192, 192, 0.7)'],
+                        borderColor: ['rgba(54, 162, 235, 1)', 'rgba(75, 192, 192, 1)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: context => `${context.label}: ${formatCurrency(context.raw)}`
+                            }
+                        }
+                    }
+                }
+            });
+            
+            const yearlyCtx = document.getElementById('yearlyChart').getContext('2d');
+            yearlyChart = new Chart(yearlyCtx, {
+                type: 'bar',
+                data: {
+                    labels: yearlyData.map(item => `${item.year}. Yıl`),
+                    datasets: [
+                        {
+                            label: 'Toplam Yatırım',
+                            data: yearlyData.map(item => item.invested),
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Faiz Getirisi',
+                            data: yearlyData.map(item => item.interest),
+                            backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Net Toplam',
+                            data: yearlyData.map(item => item.net),
+                            backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            borderWidth: 1,
+                            type: 'line',
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: value => formatCurrencyCompact(value) }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: context => `${context.dataset.label}: ${formatCurrency(context.raw)}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createYearlyTable() {
+            const tbody = document.querySelector('#yearlyTable tbody');
+            tbody.innerHTML = '';
+            yearlyData.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.year}</td>
+                    <td>${formatCurrency(item.invested)}</td>
+                    <td>${formatCurrency(item.interest)}</td>
+                    <td>${formatCurrency(item.net)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        function clearForm() {
+            document.getElementById('initialAmount').value = '10000';
+            document.getElementById('annualContribution').value = '12000';
+            document.getElementById('annualContributionIncrease').value = '5';
+            document.getElementById('monthlyContribution').value = '1000';
+            document.getElementById('monthlyContributionIncrease').value = '2';
+            document.getElementById('interestRate').value = '10';
+            document.getElementById('compoundingFrequency').value = '12';
+            document.getElementById('years').value = '10';
+            document.getElementById('taxRate').value = '15';
+            document.getElementById('results').style.display = 'none';
+        }
+        
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('tr-TR', { 
+                style: 'currency', 
+                currency: 'TRY',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+        
+        function formatCurrencyCompact(amount) {
+            return new Intl.NumberFormat('tr-TR', { 
+                style: 'currency', 
+                currency: 'TRY',
+                notation: 'compact',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+        
+        function downloadPDF() {
+            const doc = new jsPDF();
+            doc.text('Bileşik Faiz Hesaplama Sonuçları', 10, 10);
+            doc.text(`Toplam Yatırılan Tutar: ${document.getElementById('totalInvested').textContent}`, 10, 20);
+            doc.text(`Faiz Getirisi: ${document.getElementById('interestEarned').textContent}`, 10, 30);
+            doc.text(`Vergi Öncesi Toplam: ${document.getElementById('totalBeforeTax').textContent}`, 10, 40);
+            doc.text(`Ödenecek Vergi: ${document.getElementById('taxAmount').textContent}`, 10, 50);
+            doc.text(`Net Toplam: ${document.getElementById('netTotal').textContent}`, 10, 60);
+            
+            doc.addPage();
+            doc.text('Yıllık Veriler', 10, 10);
+            let y = 20;
+            yearlyData.forEach(item => {
+                doc.text(`${item.year}. Yıl - Yatırım: ${formatCurrency(item.invested)}, Faiz: ${formatCurrency(item.interest)}, Net: ${formatCurrency(item.net)}`, 10, y);
+                y += 10;
+                if (y > 280) {
+                    doc.addPage();
+                    y = 10;
+                }
+            });
+            
+            doc.save('bileşik_faiz_hesaplama.pdf');
+        }
+        
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const button = document.getElementById('themeToggle');
+            button.textContent = document.body.classList.contains('dark-mode') ? 'Açık Mod' : 'Koyu Mod';
+        }
+    </script>
+</body>
+</html>
